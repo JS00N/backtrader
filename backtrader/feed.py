@@ -37,6 +37,8 @@ from .dataseries import SimpleFilterWrapper
 from .resamplerfilter import Resampler, Replayer
 from .tradingcal import PandasMarketCalendar
 
+from zipfile import ZipFile
+
 
 class MetaAbstractDataBase(dataseries.OHLCDateTime.__class__):
     _indcol = dict()
@@ -667,6 +669,10 @@ class CSVDataBase(with_metaclass(MetaCSVDataBase, DataBase)):
         super(CSVDataBase, self).start()
 
         if self.f is None:
+            if '.zip' in self.p.dataname:
+                with ZipFile(self.p.dataname) as zfile:
+                     self.p.dataname = zfile.open(os.path.basename(
+                         self.p.dataname).replace('.zip', '.csv'))
             if hasattr(self.p.dataname, 'readline'):
                 self.f = self.p.dataname
             else:
@@ -701,11 +707,13 @@ class CSVDataBase(with_metaclass(MetaCSVDataBase, DataBase)):
 
         # Let an exception propagate to let the caller know
         line = self.f.readline()
+        if isinstance(line, bytes):
+            line = line.decode()
 
         if not line:
             return False
 
-        line = line.rstrip('\n')
+        line = line.rstrip('\n').rstrip('\r')
         linetokens = line.split(self.separator)
         return self._loadline(linetokens)
 
